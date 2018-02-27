@@ -4,4 +4,5 @@ version = "0.1.0"
 authors = ["Vladimir Atamanov <rokannon@gmail.com>"]
 
 [dependencies]
+exonum = { version = "0.5.1", path = "../exonum/exonum" }
 timestamping = { path="../timestamping" }
