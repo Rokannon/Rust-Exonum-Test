@@ -18,6 +18,7 @@ use exonum::storage::{Fork, MapIndex, Snapshot};
 use exonum::crypto::{Hash, PublicKey};
 use exonum::encoding;
 use exonum::api::{Api, ApiError};
+use exonum::explorer::BlockchainExplorer;
 use iron::prelude::*;
 use iron::Handler;
 use iron::status::Status;
@@ -144,6 +145,22 @@ impl TimestampingApi {
             Err(e) => Err(ApiError::BadRequest(e.to_string()))?,
         }
     }
+
+    fn block_info(&self, req: &mut Request) -> IronResult<Response> {
+        let path = req.url.path();
+        let block_height_str = path.last().unwrap();
+        let block_height = exonum::helpers::Height(block_height_str.parse::<u64>().unwrap());
+        let blockchain_explorer = BlockchainExplorer::new(&self.blockchain);
+        match blockchain_explorer.block_info(block_height) {
+            Some(block_info) => {
+                let result = format!("Block found: {:?}", block_info);
+                self.ok_response(&serde_json::to_value(result).unwrap())
+            }
+            None => {
+                self.ok_response(&serde_json::to_value("Block not found!").unwrap())
+            }
+        }
+    }
 }
 
 impl Api for TimestampingApi {
@@ -154,10 +171,13 @@ impl Api for TimestampingApi {
         let get_timestamps = move |req: &mut Request| self_.get_timestamps(req);
         let self_ = self.clone();
         let get_timestamp = move |req: &mut Request| self_.get_timestamp(req);
+        let self_ = self.clone();
+        let block_info = move |req: &mut Request| self_.block_info(req);
 
         router.post("/v1/timestamps", post_create_timestamp, "post_create_timestamp");
         router.get("/v1/timestamps", get_timestamps, "get_timestamps");
         router.get("/v1/timestamp/:pub_key", get_timestamp, "get_timestamp");
+        router.get("/v1/block_info/:block_height", block_info, "block_info");
     }
 }
 
